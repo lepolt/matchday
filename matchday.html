@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matchday</title>
+<style>
+  :root{
+    --pitch:#1F4D36;
+    --pitch-dark:#153826;
+    --paper:#F6F3EA;
+    --card:#FFFFFF;
+    --ink:#1C2321;
+    --muted:#748077;
+    --amber:#E2A33B;
+    --amber-dark:#B97F1F;
+    --line:#DEDACB;
+    --red:#B34638;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .display{
+    font-family:"Arial Narrow",Arial,sans-serif;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+  }
+  header.top{
+    background:var(--pitch-dark);
+    color:var(--paper);
+    padding:22px 18px 18px;
+  }
+  header.top h1{
+    margin:0;
+    font-size:28px;
+    letter-spacing:0.06em;
+  }
+  header.top h1 span{color:var(--amber);}
+  header.top p{
+    margin:4px 0 0;
+    color:#B9C7BE;
+    font-size:13px;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 14px;}
+
+  /* Upcoming (next 5 days) */
+  .upcoming{
+    background:var(--ink);
+    color:var(--paper);
+    margin-top:16px;
+    border-radius:6px;
+    padding:14px 16px;
+  }
+  .upcoming .label{
+    font-size:11px;
+    color:var(--amber);
+    margin-bottom:8px;
+  }
+  .upcoming-empty{color:#9FB0A6;font-size:13px;}
+  .day-group{margin-bottom:12px;}
+  .day-group:last-child{margin-bottom:0;}
+  .day-heading{
+    font-size:12px;
+    font-weight:700;
+    color:var(--amber);
+    border-bottom:1px solid #3A473F;
+    padding-bottom:4px;
+    margin-bottom:6px;
+  }
+  .day-game{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:10px;
+    padding:4px 0;
+    font-size:13px;
+  }
+  .day-game .who{font-weight:600;}
+  .day-game .who .team-tag{color:#9FB0A6;font-weight:400;font-size:11.5px;}
+  .day-game .when{color:#B9C7BE;font-size:12px;white-space:nowrap;}
+
+  /* Controls */
+  .controls{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin:18px 0 10px;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .btn{
+    font-family:inherit;
+    font-size:13px;
+    font-weight:600;
+    border:none;
+    border-radius:5px;
+    padding:9px 14px;
+    cursor:pointer;
+  }
+  .btn-primary{background:var(--pitch);color:#fff;}
+  .btn-primary:hover{background:var(--pitch-dark);}
+  .btn-ghost{background:transparent;color:var(--pitch);border:1px solid var(--line);}
+  .btn-ghost:hover{background:#fff;}
+  .btn-small{padding:5px 10px;font-size:12px;}
+  .btn:disabled{opacity:0.5;cursor:default;}
+
+  /* Team cards */
+  .grid{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:20px;}
+  @media(min-width:680px){ .grid{grid-template-columns:1fr 1fr;} }
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:8px;
+    overflow:hidden;
+  }
+  .card-head{
+    padding:12px 14px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:8px;
+  }
+  .card-head h3{
+    margin:0;
+    font-size:15px;
+    line-height:1.25;
+  }
+  .card-head .division{
+    font-size:11px;
+    color:var(--muted);
+    margin-top:2px;
+  }
+  .card-head .gs-link{
+    font-size:10.5px;
+    color:var(--pitch);
+    text-decoration:none;
+    font-weight:600;
+  }
+  .card-head .gs-link:hover{text-decoration:underline;}
+  .status-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;margin-top:5px;}
+  .status-ok{background:#3E8E5C;}
+  .status-loading{background:var(--amber);animation:pulse 1s infinite;}
+  .status-error{background:var(--red);}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+  .stat-row{
+    display:flex;
+    gap:14px;
+    align-items:center;
+    padding:8px 0 10px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:10px;
+    flex-wrap:wrap;
+  }
+  .stat-block .stat-label{
+    font-size:9.5px;
+    color:var(--muted);
+    font-weight:700;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+  }
+  .stat-block .stat-value{
+    font-size:15px;
+    font-weight:800;
+    font-family:"Arial Narrow",Arial,sans-serif;
+  }
+  .last-match-line{font-size:12px;color:var(--muted);margin-top:1px;}
+  .form-circles{display:flex;gap:5px;margin-top:3px;}
+  .form-dot{
+    width:18px;height:18px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:9px;font-weight:800;color:#fff;
+    cursor:default;
+  }
+  .form-w{background:#3E8E5C;}
+  .form-l{background:var(--red);}
+  .form-d{background:#C9A227;}
+
+  .card-body{padding:12px 14px;}
+  .next-box{
+    background:var(--paper);
+    border:1px dashed var(--amber-dark);
+    border-radius:6px;
+    padding:10px 12px;
+    margin-bottom:10px;
+  }
+  .next-box .eyebrow{
+    font-size:10px;
+    color:var(--amber-dark);
+    font-weight:700;
+    letter-spacing:0.05em;
+  }
+  .next-box .opp{font-size:14px;font-weight:700;margin-top:3px;}
+  .next-box .meta{font-size:12px;color:var(--muted);margin-top:2px;}
+  .none-scheduled{font-size:13px;color:var(--muted);font-style:italic;}
+
+  .results-list{list-style:none;margin:0;padding:0;}
+  .results-list li{
+    display:flex;
+    justify-content:space-between;
+    font-size:12.5px;
+    padding:5px 0;
+    border-top:1px solid var(--line);
+  }
+  .results-list li:first-child{border-top:none;}
+  .res-badge{
+    font-weight:700;
+    font-size:11px;
+    padding:1px 6px;
+    border-radius:3px;
+    margin-right:6px;
+  }
+  .res-w{background:#DCEEDF;color:#2A6B41;}
+  .res-l{background:#F5DDDA;color:var(--red);}
+  .res-d{background:#EDE7D4;color:#8A7A3D;}
+
+  .toggle-full{
+    font-size:12px;
+    color:var(--pitch);
+    background:none;
+    border:none;
+    cursor:pointer;
+    padding:8px 0 0;
+    font-weight:600;
+  }
+  .full-schedule{display:none;margin-top:10px;border-top:1px solid var(--line);padding-top:8px;}
+  .full-schedule.open{display:block;}
+  .full-schedule table{width:100%;border-collapse:collapse;font-size:12px;}
+  .full-schedule td{padding:4px 2px;border-top:1px solid var(--line);vertical-align:top;}
+  .full-schedule td.opp-cell{font-weight:600;}
+  .full-schedule .date-cell{color:var(--muted);white-space:nowrap;}
+
+  .card-error{font-size:12.5px;color:var(--red);}
+  .card-error a{color:var(--red);}
+
+  /* Manage panel */
+  .manage{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:14px;
+    margin-bottom:20px;
+  }
+  .manage h2{font-size:14px;margin:0 0 10px;}
+  .team-row{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    padding:6px 0;
+    border-top:1px solid var(--line);
+    font-size:13px;
+  }
+  .team-row:first-of-type{border-top:none;}
+  .team-row .tname{flex:1;font-weight:600;}
+  .team-row .turl{flex:2;color:var(--muted);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .add-form{
+    display:flex;
+    gap:8px;
+    margin-top:10px;
+    flex-wrap:wrap;
+  }
+  .add-form input{
+    font-family:inherit;
+    font-size:13px;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:5px;
+    flex:1;
+    min-width:140px;
+  }
+  .empty-state{
+    text-align:center;
+    padding:40px 20px;
+    color:var(--muted);
+  }
+  .empty-state h2{color:var(--ink);font-size:18px;}
+  footer{text-align:center;font-size:11px;color:var(--muted);padding:20px 0 40px;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <h1 class="display">Match<span>day</span></h1>
+    <p id="subtitle">Loading your teams…</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="upcoming" id="upcoming">
+    <div class="label display">Next 5 days</div>
+    <div class="upcoming-empty">No teams added yet</div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="refreshBtn">Refresh all</button>
+    <button class="btn btn-ghost" id="manageBtn">Manage teams</button>
+  </div>
+
+  <div class="manage" id="managePanel" style="display:none;">
+    <h2 class="display">Your teams</h2>
+    <div id="teamListEditor"></div>
+    <div class="add-form">
+      <input type="text" id="newTeamName" placeholder="Team label (e.g. Maya - U14 Girls)">
+      <input type="text" id="newTeamUrl" placeholder="GotSport schedule URL">
+      <button class="btn btn-primary btn-small" id="addTeamBtn">Add</button>
+    </div>
+  </div>
+
+  <div class="grid" id="cardGrid"></div>
+
+  <div class="empty-state" id="emptyState" style="display:none;">
+    <h2 class="display">No teams yet</h2>
+    <p>Click "Manage teams" above and paste in a GotSport team schedule URL<br>(the page that looks like <code>.../schedules?team=1234567</code>).</p>
+  </div>
+</div>
+
+<footer>Fetches schedule data from GotSport on demand via a public CORS relay. Personal use only.</footer>
+
+<script>
+const STORAGE_KEY = 'teams';
+const CACHE_PREFIX = 'schedule:';
+let teams = [];
+let scheduleData = {}; // id -> {status, teamName, division, matches, error}
+
+// ---------- Storage helpers (plain localStorage - this file runs standalone in your own browser) ----------
+async function loadTeams(){
+  try{
+    const raw = localStorage.getItem('matchday:'+STORAGE_KEY);
+    teams = raw ? JSON.parse(raw) : [];
+  }catch(e){ teams = []; }
+}
+async function saveTeams(){
+  localStorage.setItem('matchday:'+STORAGE_KEY, JSON.stringify(teams));
+}
+async function loadCache(id){
+  try{
+    const raw = localStorage.getItem('matchday:'+CACHE_PREFIX+id);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+async function saveCache(id, data){
+  try{ localStorage.setItem('matchday:'+CACHE_PREFIX+id, JSON.stringify(data)); }catch(e){}
+}
+
+// ---------- Fetch + parse ----------
+function proxiedUrl(target, attempt){
+  const enc = encodeURIComponent(target);
+  const proxies = [
+    'https://corsproxy.io/?url=' + enc,           // allows localhost origins
+    'https://api.allorigins.win/raw?url=' + enc,
+    'https://api.codetabs.com/v1/proxy?quest=' + enc,
+    'https://api.allorigins.win/raw?url=' + enc + '&_r=' + Date.now()
+  ];
+  return proxies[attempt];
+}
+
+async function fetchHtml(targetUrl){
+  let lastErr;
+  for(let attempt=0; attempt<4; attempt++){
+    try{
+      const res = await fetch(proxiedUrl(targetUrl, attempt), {cache:'no-store'});
+      if(!res.ok) throw new Error('proxy returned HTTP '+res.status);
+      const text = await res.text();
+      if(!text) throw new Error('empty response');
+      // Reject proxy-side error payloads (e.g. corsproxy.io's "API key required" JSON,
+      // or allorigins timing out) - a real GotSport page will contain these markers.
+      const looksLikeRealPage = /<html|widget-body|GotSport/i.test(text);
+      if(!looksLikeRealPage){
+        throw new Error('proxy returned an error instead of the page: ' + text.slice(0,120));
+      }
+      return text;
+    }catch(e){ lastErr = e; }
+  }
+  throw lastErr || new Error('all proxies failed');
+}
+
+function parseSchedule(html){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+
+  let teamName = '';
+  const h4 = doc.querySelector('.widget-body h4.no-margin-top');
+  if(h4) teamName = h4.textContent.trim().replace(/\s+/g,' ');
+
+  const divisionEl = doc.querySelector('.lead.no-margin-bottom');
+  const division = divisionEl ? divisionEl.textContent.trim().replace(/\s+/g,' ') : '';
+
+  const matches = [];
+  const tables = doc.querySelectorAll('table');
+  tables.forEach(table => {
+    const firstTh = table.querySelector('thead th');
+    if(!firstTh) return;
+    // find header row text to confirm this is a match table
+    const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+    if(!headers.some(h => h.includes('Match #'))) return;
+
+    table.querySelectorAll('tbody tr').forEach(tr => {
+      const tds = tr.querySelectorAll('td');
+      if(tds.length < 7) return;
+      const matchNum = tds[0].textContent.trim();
+      const dateCell = tds[1];
+      const dateLine = dateCell.childNodes[0] ? dateCell.childNodes[0].textContent.trim() : '';
+      const timeEl = dateCell.querySelector('.text-color');
+      const timeLine = timeEl ? timeEl.textContent.trim() : '';
+      const homeLink = tds[2].querySelector('a');
+      const home = homeLink ? homeLink.textContent.trim() : tds[2].textContent.trim();
+      const resultText = tds[3].textContent.trim();
+      const awayLink = tds[4].querySelector('a');
+      const away = awayLink ? awayLink.textContent.trim() : tds[4].textContent.trim();
+      const location = tds[5].textContent.trim().replace(/\s+/g,' ');
+      const div = tds[6].textContent.trim();
+
+      let ts = NaN;
+      if(dateLine){
+        const cleanTime = timeLine.replace(/\s*(EDT|EST|CDT|CST|MDT|MST|PDT|PST)\s*$/,'');
+        ts = Date.parse(dateLine + ' ' + cleanTime);
+      }
+
+      const played = resultText && resultText !== '-' && resultText !== '';
+      matches.push({
+        matchNum, dateLine, timeLine, ts,
+        home, away, result: resultText, played,
+        location, division: div
+      });
+    });
+  });
+
+  matches.sort((a,b) => (a.ts||0) - (b.ts||0));
+  return { teamName, division, matches };
+}
+
+function annotate(teamNameOnPage, matches){
+  const now = Date.now();
+  return matches.map(m => {
+    const isHome = m.home === teamNameOnPage;
+    const isAway = m.away === teamNameOnPage;
+    const opponent = isHome ? m.away : (isAway ? m.home : (m.home + ' vs ' + m.away));
+    let outcome = null;
+    if(m.played){
+      const scoreMatch = m.result.match(/(\d+)\s*-\s*(\d+)/);
+      if(scoreMatch){
+        const homeScore = parseInt(scoreMatch[1],10);
+        const awayScore = parseInt(scoreMatch[2],10);
+        const myScore = isHome ? homeScore : awayScore;
+        const oppScore = isHome ? awayScore : homeScore;
+        outcome = myScore > oppScore ? 'W' : (myScore < oppScore ? 'L' : 'D');
+      }
+    }
+    return {...m, isHome, opponent, outcome, isFuture: (m.ts && m.ts >= now - 3*60*60*1000)};
+  });
+}
+
+// ---------- Rendering ----------
+function fmtDate(m){
+  if(!m.dateLine) return '';
+  return m.dateLine + (m.timeLine ? ' · ' + m.timeLine : '');
+}
+
+function renderUpcoming(){
+  const el = document.getElementById('upcoming');
+  const now = new Date();
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const endWindow = startToday + 5*24*60*60*1000; // today + next 4 days
+
+  const games = [];
+  teams.forEach(t => {
+    const d = scheduleData[t.id];
+    if(!d || d.status !== 'ok') return;
+    d.matches.forEach(m => {
+      if(!m.played && m.ts && m.ts >= startToday && m.ts < endWindow){
+        games.push({team: t.name, m});
+      }
+    });
+  });
+  games.sort((a,b) => a.m.ts - b.m.ts);
+
+  el.innerHTML = '<div class="label display">Next 5 days</div>';
+  if(games.length === 0){
+    el.innerHTML += `<div class="upcoming-empty">${teams.length ? 'No games scheduled in the next 5 days' : 'No teams added yet'}</div>`;
+    return;
+  }
+
+  // group consecutive games by calendar day
+  const groups = [];
+  games.forEach(g => {
+    const dayKey = new Date(g.m.ts).toDateString();
+    let group = groups.find(gr => gr.dayKey === dayKey);
+    if(!group){
+      group = {
+        dayKey,
+        label: new Date(g.m.ts).toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'}),
+        items: []
+      };
+      groups.push(group);
+    }
+    group.items.push(g);
+  });
+
+  groups.forEach(group => {
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'day-group';
+    let itemsHtml = '';
+    group.items.forEach(g => {
+      itemsHtml += `<div class="day-game">
+        <span class="who"><span class="team-tag">${escapeHtml(g.team)}</span> ${g.m.isHome?'vs':'@'} ${escapeHtml(g.m.opponent)}</span>
+        <span class="when">${escapeHtml(g.m.timeLine || '')}</span>
+      </div>`;
+    });
+    dayDiv.innerHTML = `<div class="day-heading">${escapeHtml(group.label)}</div>${itemsHtml}`;
+    el.appendChild(dayDiv);
+  });
+}
+
+function renderCards(){
+  const grid = document.getElementById('cardGrid');
+  const emptyState = document.getElementById('emptyState');
+  grid.innerHTML = '';
+
+  if(teams.length === 0){
+    emptyState.style.display = 'block';
+    return;
+  }
+  emptyState.style.display = 'none';
+
+  teams.forEach(t => {
+    const d = scheduleData[t.id];
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    let statusClass = 'status-loading';
+    if(d && d.status === 'ok') statusClass = 'status-ok';
+    if(d && d.status === 'error') statusClass = 'status-error';
+
+    const divisionLabel = (d && d.division) ? d.division : '';
+
+    let bodyHtml = '';
+    if(!d || d.status === 'loading'){
+      bodyHtml = '<div class="none-scheduled">Loading schedule…</div>';
+    } else if(d.status === 'error'){
+      bodyHtml = `<div class="card-error">Couldn't load this team's schedule (${escapeHtml(d.error||'unknown error')}).
+        <a href="${escapeAttr(t.url)}" target="_blank" rel="noopener">Open on GotSport</a> instead, or try refreshing again.</div>`;
+    } else {
+      const played = d.matches.filter(m => m.played);
+      const wins = played.filter(m => m.outcome === 'W').length;
+      const losses = played.filter(m => m.outcome === 'L').length;
+      const draws = played.filter(m => m.outcome === 'D').length;
+
+      if(played.length){
+        const last = played[played.length - 1];
+        const last5 = played.slice(-5);
+        const dotsHtml = last5.map(m => {
+          const cls = m.outcome === 'W' ? 'form-w' : (m.outcome === 'L' ? 'form-l' : 'form-d');
+          const letter = m.outcome || '?';
+          const title = `${m.isHome?'vs':'@'} ${m.opponent} · ${m.result} · ${fmtDate(m)}`;
+          return `<div class="form-dot ${cls}" title="${escapeAttr(title)}">${letter}</div>`;
+        }).join('');
+
+        bodyHtml += `<div class="stat-row">
+          <div class="stat-block">
+            <div class="stat-label">Record</div>
+            <div class="stat-value">${wins}-${losses}-${draws}</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Last match</div>
+            <div class="stat-value">${last.outcome || ''} ${escapeHtml(last.result)}</div>
+            <div class="last-match-line">${last.isHome?'vs':'@'} ${escapeHtml(last.opponent)}</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Last 5</div>
+            <div class="form-circles">${dotsHtml}</div>
+          </div>
+        </div>`;
+      }
+
+      const next = d.matches.find(m => !m.played && m.isFuture);
+      if(next){
+        bodyHtml += `<div class="next-box">
+          <div class="eyebrow display">Next match</div>
+          <div class="opp">${next.isHome ? 'vs' : '@'} ${escapeHtml(next.opponent)}</div>
+          <div class="meta">${escapeHtml(fmtDate(next))}${next.location ? ' · ' + escapeHtml(next.location) : ''}</div>
+        </div>`;
+      } else {
+        bodyHtml += `<div class="none-scheduled">No upcoming games scheduled.</div>`;
+      }
+
+      bodyHtml += `<button class="toggle-full" data-id="${t.id}">Show full schedule ▾</button>`;
+      bodyHtml += `<div class="full-schedule" id="full-${t.id}"><table><tbody>`;
+      d.matches.forEach(m => {
+        bodyHtml += `<tr>
+          <td class="date-cell">${escapeHtml(fmtDate(m))}</td>
+          <td class="opp-cell">${m.isHome?'vs':'@'} ${escapeHtml(m.opponent)}</td>
+          <td>${escapeHtml(m.played ? m.result : (m.isFuture ? 'upcoming' : 'TBD'))}</td>
+        </tr>`;
+      });
+      bodyHtml += `</tbody></table></div>`;
+    }
+
+    card.innerHTML = `
+      <div class="card-head">
+        <div>
+          <h3>${escapeHtml(t.name)}</h3>
+          ${divisionLabel ? `<div class="division">${escapeHtml(divisionLabel)}</div>` : ''}
+          <a class="gs-link" href="${escapeAttr(t.url)}" target="_blank" rel="noopener">View on GotSport ↗</a>
+        </div>
+        <div class="status-dot ${statusClass}"></div>
+      </div>
+      <div class="card-body">${bodyHtml}</div>
+    `;
+    grid.appendChild(card);
+  });
+
+  grid.querySelectorAll('.toggle-full').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const panel = document.getElementById('full-'+btn.dataset.id);
+      panel.classList.toggle('open');
+      btn.textContent = panel.classList.contains('open') ? 'Hide full schedule ▴' : 'Show full schedule ▾';
+    });
+  });
+}
+
+function renderManage(){
+  const list = document.getElementById('teamListEditor');
+  list.innerHTML = '';
+  if(teams.length === 0){
+    list.innerHTML = '<div style="color:var(--muted);font-size:13px;">No teams added yet.</div>';
+  }
+  teams.forEach(t => {
+    const row = document.createElement('div');
+    row.className = 'team-row';
+    row.innerHTML = `
+      <span class="tname">${escapeHtml(t.name)}</span>
+      <span class="turl">${escapeHtml(t.url)}</span>
+      <button class="btn btn-ghost btn-small" data-rename="${t.id}">Rename</button>
+      <button class="btn btn-ghost btn-small" data-remove="${t.id}">Remove</button>
+    `;
+    list.appendChild(row);
+  });
+  list.querySelectorAll('[data-rename]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.rename;
+      const team = teams.find(t => t.id === id);
+      if(!team) return;
+      const newName = window.prompt('Rename team:', team.name);
+      if(newName === null) return; // cancelled
+      const trimmed = newName.trim();
+      if(!trimmed) return;
+      team.name = trimmed;
+      await saveTeams();
+      renderManage(); renderCards(); renderUpcoming();
+    });
+  });
+  list.querySelectorAll('[data-remove]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.remove;
+      teams = teams.filter(t => t.id !== id);
+      delete scheduleData[id];
+      await saveTeams();
+      renderManage(); renderCards(); renderUpcoming(); updateSubtitle();
+    });
+  });
+}
+
+function updateSubtitle(){
+  const sub = document.getElementById('subtitle');
+  if(teams.length === 0){
+    sub.textContent = 'Add your teams to get started';
+  } else {
+    sub.textContent = `Tracking ${teams.length} team${teams.length>1?'s':''}`;
+  }
+}
+
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s){ return escapeHtml(s); }
+
+// ---------- Fetch orchestration ----------
+async function refreshTeam(t){
+  scheduleData[t.id] = scheduleData[t.id] && scheduleData[t.id].status === 'ok'
+    ? {...scheduleData[t.id], status: 'loading'}
+    : {status: 'loading'};
+  renderCards();
+
+  try{
+    const html = await fetchHtml(t.url);
+    const parsed = parseSchedule(html);
+    const matches = annotate(parsed.teamName || t.name, parsed.matches);
+    const data = {status:'ok', teamName: parsed.teamName, division: parsed.division, matches};
+    scheduleData[t.id] = data;
+    await saveCache(t.id, data);
+  }catch(e){
+    scheduleData[t.id] = {status:'error', error: e.message || String(e)};
+  }
+  renderCards();
+  renderUpcoming();
+}
+
+async function refreshAll(){
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  btn.textContent = 'Refreshing…';
+  await Promise.all(teams.map(t => refreshTeam(t)));
+  btn.disabled = false;
+  btn.textContent = 'Refresh all';
+}
+
+// ---------- Init ----------
+async function init(){
+  await loadTeams();
+  updateSubtitle();
+
+  // show cached data immediately
+  for(const t of teams){
+    const cached = await loadCache(t.id);
+    if(cached) scheduleData[t.id] = cached;
+  }
+  renderCards();
+  renderUpcoming();
+  renderManage();
+
+  if(teams.length > 0){
+    refreshAll();
+  }
+
+  document.getElementById('refreshBtn').addEventListener('click', refreshAll);
+  document.getElementById('manageBtn').addEventListener('click', () => {
+    const panel = document.getElementById('managePanel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  });
+  document.getElementById('addTeamBtn').addEventListener('click', async () => {
+    const nameInput = document.getElementById('newTeamName');
+    const urlInput = document.getElementById('newTeamUrl');
+    const name = nameInput.value.trim();
+    const url = urlInput.value.trim();
+    if(!name || !url) return;
+    const id = 't' + Date.now() + Math.random().toString(36).slice(2,7);
+    teams.push({id, name, url});
+    await saveTeams();
+    nameInput.value = ''; urlInput.value = '';
+    updateSubtitle();
+    renderManage();
+    renderCards();
+    await refreshTeam(teams[teams.length-1]);
+    renderUpcoming();
+  });
+}
+
+init();
+</script>
+</body>
+</html>
