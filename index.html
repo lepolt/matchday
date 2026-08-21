@@ -305,6 +305,7 @@
   <div class="controls">
     <button class="btn btn-primary" id="refreshBtn">Refresh all</button>
     <button class="btn btn-ghost" id="manageBtn">Manage teams</button>
+    <button class="btn btn-ghost" id="copyLinkBtn">Copy link</button>
   </div>
 
   <div class="manage" id="managePanel" style="display:none;">
@@ -333,15 +334,20 @@ const CACHE_PREFIX = 'schedule:';
 let teams = [];
 let scheduleData = {}; // id -> {status, teamName, division, matches, error}
 
-// ---------- Storage helpers (plain localStorage - this file runs standalone in your own browser) ----------
+// ---------- Team list storage: lives in the URL fragment, not localStorage ----------
+// The fragment (#teams=...) is never sent to any server, so it's not subject to
+// GitHub Pages/Fastly request-line length limits the way a ?query= param would be.
+// This makes a bookmark of the current URL a fully portable, syncable dashboard
+// (e.g. via iCloud bookmark sync) - no backend needed.
 async function loadTeams(){
   try{
-    const raw = localStorage.getItem('matchday:'+STORAGE_KEY);
+    const raw = new URLSearchParams(location.hash.slice(1)).get(STORAGE_KEY);
     teams = raw ? JSON.parse(raw) : [];
+    if(!Array.isArray(teams)) teams = [];
   }catch(e){ teams = []; }
 }
 async function saveTeams(){
-  localStorage.setItem('matchday:'+STORAGE_KEY, JSON.stringify(teams));
+  history.replaceState(null, '', '#'+STORAGE_KEY+'='+encodeURIComponent(JSON.stringify(teams)));
 }
 async function loadCache(id){
   try{
@@ -737,7 +743,23 @@ async function refreshAll(){
 }
 
 // ---------- Init ----------
+// One-time migration for pre-existing installs: the team list used to live in
+// localStorage; move it into the URL fragment so it's the single source of truth.
+function migrateLegacyTeams(){
+  if(location.hash) return; // already on a fragment-backed dashboard, nothing to migrate
+  try{
+    const raw = localStorage.getItem('matchday:'+STORAGE_KEY);
+    localStorage.removeItem('matchday:'+STORAGE_KEY);
+    if(!raw) return;
+    const legacy = JSON.parse(raw);
+    if(Array.isArray(legacy) && legacy.length){
+      history.replaceState(null, '', '#'+STORAGE_KEY+'='+encodeURIComponent(JSON.stringify(legacy)));
+    }
+  }catch(e){}
+}
+
 async function init(){
+  migrateLegacyTeams();
   await loadTeams();
   updateSubtitle();
 
@@ -758,6 +780,17 @@ async function init(){
   document.getElementById('manageBtn').addEventListener('click', () => {
     const panel = document.getElementById('managePanel');
     panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  });
+  document.getElementById('copyLinkBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('copyLinkBtn');
+    try{
+      await navigator.clipboard.writeText(location.href);
+      const original = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    }catch(e){
+      window.prompt('Copy this link:', location.href);
+    }
   });
   document.getElementById('addTeamBtn').addEventListener('click', async () => {
     const nameInput = document.getElementById('newTeamName');

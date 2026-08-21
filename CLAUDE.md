@@ -56,24 +56,50 @@ This only works when the page is served over a real origin (`http://` or
 
 ## Storage
 
-Plain `localStorage`, namespaced with a `matchday:` prefix (originally
-written for `window.storage` when this was a Claude.ai artifact, but
-artifacts run in a sandboxed iframe that blocks external fetches entirely —
-so this had to become a standalone file, and storage moved to
-`localStorage` accordingly).
+The team list itself lives in the **URL fragment** (`#teams=<url-encoded
+JSON array of {id, name, url}>`), not `localStorage`. `saveTeams()` writes
+it via `history.replaceState` on every add/rename/reorder/remove;
+`loadTeams()` reads it back out of `location.hash` on load. A fragment is
+never sent to the server, so it isn't subject to GitHub Pages/Fastly
+request-line length limits the way a `?query=` param would be — the only
+real ceiling is the browser/bookmark manager's own, far beyond what a
+personal team list needs.
 
-- `matchday:teams` — JSON array of `{id, name, url}`, in display order.
+This makes the URL itself a fully portable, bookmarkable dashboard: bookmark
+the current link (e.g. via Safari, synced by iCloud) on another device and
+it reproduces the exact same teams/names/order, no re-adding required. It
+also means multiple independent "dashboards" are just multiple different
+bookmarked links — e.g. one with every kid's team, another with just one
+team to send to a grandparent. A "Copy link" button in the controls row
+copies `location.href` to the clipboard as a convenience, since the address
+bar already always reflects the live, current dashboard.
+
+**Editing is per-link, not synced.** Since there's no backend, adding or
+removing a team only updates the fragment of the tab you're editing in —
+it does not retroactively update any other bookmark you'd already saved
+elsewhere. After editing your team list, re-save/re-share whichever
+bookmark(s) you want to reflect the change.
+
+`localStorage`, namespaced with a `matchday:` prefix, is still used for one
+thing:
+
 - `matchday:schedule:<id>` — last successfully parsed schedule for that
   team, shown immediately on load before the background refresh completes.
+  Per-origin and purely a perf cache; unrelated to which dashboard/team-list
+  is currently loaded.
 
-**Known gotcha:** `localStorage` is per-origin. Teams added while testing
-on `localhost:8000` do **not** carry over to the `github.io` origin (or
-vice versa) — they need to be re-added once on whichever origin is
-actually being used going forward.
+**Migration:** pre-existing installs had the team list in a
+`matchday:teams` localStorage key. `migrateLegacyTeams()` runs once on
+load — if there's no `#teams=` fragment yet and that legacy key has data, it
+converts it into a fragment (so the existing owner's team list survives as
+a bookmarkable link) and removes the old key either way.
 
 ## Features implemented
 
-- Add / rename / remove / reorder (▲▼) teams, all persisted.
+- Add / rename / remove / reorder (▲▼) teams, all persisted via the URL
+  fragment (see Storage above).
+- "Copy link" button to grab the current dashboard's shareable/bookmarkable
+  URL.
 - Auto-refreshes all teams on page load; manual "Refresh all" button.
 - Per-team card: W-L-D record, last match result, last-5-results as
   colored form circles (green/red/yellow, oldest → newest, hover for
@@ -101,9 +127,10 @@ actually being used going forward.
 
 ## Possible next steps (not yet requested/built)
 
-Nothing currently pending — last request was team reordering, which is
-done. If picking this back up, good candidates might be: combining the
-"Next 5 days" and per-team next-match views so they don't repeat info,
+Nothing currently pending — last request was moving the team list from
+`localStorage` into the URL fragment for cross-device/no-backend syncing,
+which is done. If picking this back up, good candidates might be: combining
+the "Next 5 days" and per-team next-match views so they don't repeat info,
 letting the CORS proxy list be user-editable in case all three relays
 degrade, or replacing the public relays with a small self-hosted proxy
 (e.g. a Cloudflare Worker) for reliability.
