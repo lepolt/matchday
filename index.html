@@ -63,6 +63,7 @@
     margin-bottom:8px;
   }
   .upcoming-empty{color:#9FB0A6;font-size:13px;}
+  .overall-record{font-size:20px;font-weight:700;margin-bottom:14px;}
   .day-group{margin-bottom:12px;}
   .day-group:last-child{margin-bottom:0;}
   .day-heading{
@@ -490,7 +491,23 @@ function renderUpcoming(){
   });
   games.sort((a,b) => a.m.ts - b.m.ts);
 
-  el.innerHTML = '<div class="label display">Next 5 days</div>';
+  let overallHtml = '';
+  if(teams.length > 0){
+    let wins = 0, losses = 0, draws = 0;
+    teams.forEach(t => {
+      const d = scheduleData[t.id];
+      if(!d || d.status !== 'ok') return;
+      d.matches.forEach(m => {
+        if(m.outcome === 'W') wins++;
+        else if(m.outcome === 'L') losses++;
+        else if(m.outcome === 'D') draws++;
+      });
+    });
+    overallHtml = `<div class="label display">Overall record</div>
+      <div class="overall-record">${wins}-${losses}-${draws}</div>`;
+  }
+
+  el.innerHTML = overallHtml + '<div class="label display">Next 5 days</div>';
   if(games.length === 0){
     el.innerHTML += `<div class="upcoming-empty">${teams.length ? 'No games scheduled in the next 5 days' : 'No teams added yet'}</div>`;
     return;
